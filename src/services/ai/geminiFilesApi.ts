@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { guessMimeTypeFromUri } from '../../utils/media';
 
 export interface GeminiFile {
@@ -22,23 +23,48 @@ export const uploadFileToGemini = async (localUri: string, displayName?: string)
     // Uses the "media upload" endpoint. In Expo, BINARY_CONTENT streams the file from disk.
     const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${encodeURIComponent(apiKey)}`;
 
-    const res = await FileSystem.uploadAsync(uploadUrl, localUri, {
-        httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-        headers: {
-            'X-Goog-Upload-Protocol': 'raw',
-            'X-Goog-Upload-Command': 'upload, finalize',
-            'Content-Type': mimeType,
-            // Best-effort metadata hint; API ignores if unsupported.
-            ...(displayName ? { 'X-Goog-Upload-File-Name': displayName } : {}),
-        },
-    });
+    let status: number;
+    let bodyText: string;
 
-    if (res.status < 200 || res.status >= 300) {
-        throw new Error(`Gemini Files API upload failed (${res.status}): ${res.body?.slice(0, 200)}`);
+    if (Platform.OS === 'web') {
+        const blobRes = await fetch(localUri);
+        const blob = await blobRes.blob();
+
+        const res = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+                'X-Goog-Upload-Protocol': 'raw',
+                // Web path: request asked for start/upload/finalize semantics.
+                'X-Goog-Upload-Command': 'start, upload, finalize',
+                'Content-Type': mimeType,
+                ...(displayName ? { 'X-Goog-Upload-File-Name': displayName } : {}),
+            },
+            body: blob,
+        });
+
+        status = res.status;
+        bodyText = await res.text();
+    } else {
+        const res = await FileSystem.uploadAsync(uploadUrl, localUri, {
+            httpMethod: 'POST',
+            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+            headers: {
+                'X-Goog-Upload-Protocol': 'raw',
+                'X-Goog-Upload-Command': 'upload, finalize',
+                'Content-Type': mimeType,
+                ...(displayName ? { 'X-Goog-Upload-File-Name': displayName } : {}),
+            },
+        });
+
+        status = res.status;
+        bodyText = res.body;
     }
 
-    const parsed = JSON.parse(res.body);
+    if (status < 200 || status >= 300) {
+        throw new Error(`Gemini Files API upload failed (${status}): ${bodyText?.slice(0, 200)}`);
+    }
+
+    const parsed = JSON.parse(bodyText);
     const file: GeminiFile = parsed.file ?? parsed;
     if (!file?.name || !file?.uri) {
         throw new Error('Gemini Files API upload returned unexpected response.');

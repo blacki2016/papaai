@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { IAIService, AIInput, AIStatusCallback } from '../../types/ai';
 import type { Recipe, RecipeVersions } from '../../types/recipe';
-import { extractJsonObjectFromText } from '../../utils/parseJson';
+import { parseJsonFromModel } from '../../utils/parseJson';
 import { deleteGeminiFile, uploadFileToGemini, waitForGeminiFileActive } from './geminiFilesApi';
 
 const getApiKey = () => {
@@ -92,26 +92,22 @@ export class GeminiProvider implements IAIService {
         safetySettings,
     });
 
-    async generateRecipe(input: AIInput, onStatus?: AIStatusCallback): Promise<Recipe> {
+    async generateRecipe(input: AIInput, onStatus: AIStatusCallback): Promise<Recipe> {
         if (input.type === 'text') {
-            onStatus?.('Rezept wird erstellt...');
+            onStatus('Rezept wird erstellt...');
             const result = await this.modelFlash.generateContent([SYSTEM, `Anfrage: ${input.content}`]);
             return this.mapToRecipe(result.response.text(), input.sourceTypeHint ?? 'text');
         }
 
         if (input.type === 'image') {
-            if (!input.mediaData) {
-                throw new Error('Für Bild-Requests wird mediaData (base64) benötigt.');
-            }
-            onStatus?.('Bild wird analysiert...');
+            onStatus('Bild wird analysiert...');
 
-            const mimeType = input.mimeType || 'image/jpeg';
+            const task =
+                input.sourceTypeHint === 'pantry'
+                    ? 'Pantry Check: Analysiere dieses Foto vom Kühlschrank/Vorrat. Erkenne die sichtbaren Zutaten und schlage ein passendes Rezept vor (Grundzutaten wie Salz/Öl darfst du annehmen).'
+                    : 'Menu Scan: Analysiere dieses Foto einer Speisekarte oder eines Gerichts. Extrahiere den Gerichtsnamen und erstelle daraus das Rezept.';
 
-            const parts: any[] = [
-                { inlineData: { data: input.mediaData, mimeType } },
-                SYSTEM,
-                `Aufgabe: ${input.content}`,
-            ];
+            const parts: any[] = [{ inlineData: { data: input.mediaData, mimeType: input.mimeType } }, SYSTEM, `Aufgabe: ${task}`];
 
             const result = await this.modelFlash.generateContent(parts);
             return this.mapToRecipe(result.response.text(), input.sourceTypeHint ?? 'ocr');
@@ -119,12 +115,12 @@ export class GeminiProvider implements IAIService {
 
         if (input.type === 'video') {
             // content = local URI
-            onStatus?.('Video wird hochgeladen...');
+            onStatus('Video wird hochgeladen...');
             const uploaded = await uploadFileToGemini(input.content, 'chefmater-video');
 
             try {
                 await waitForGeminiFileActive(uploaded.name, onStatus);
-                onStatus?.('Analyse läuft...');
+                onStatus('Analyse läuft...');
 
                 const parts: any[] = [
                     { fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType || 'video/mp4' } },
@@ -138,7 +134,7 @@ export class GeminiProvider implements IAIService {
             } finally {
                 // Best-effort cleanup for privacy.
                 try {
-                    onStatus?.('Aufräumen...');
+                    onStatus('Aufräumen...');
                     await deleteGeminiFile(uploaded.name);
                 } catch {
                     // ignore cleanup errors
@@ -150,8 +146,7 @@ export class GeminiProvider implements IAIService {
     }
 
     private mapToRecipe(text: string, sourceType: Recipe['sourceType']): Recipe {
-        const jsonText = extractJsonObjectFromText(text);
-        const parsed = JSON.parse(jsonText) as { originalName: string; versions: RecipeVersions };
+        const parsed = parseJsonFromModel<{ originalName: string; versions: RecipeVersions }>(text);
 
         return {
             recipeId: uuidv4(),

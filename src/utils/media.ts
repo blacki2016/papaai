@@ -1,7 +1,27 @@
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { Platform } from 'react-native';
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(reader.error);
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            // result is like: data:<mime>;base64,<payload>
+            const commaIdx = result.indexOf(',');
+            resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
+        };
+        reader.readAsDataURL(blob);
+    });
+};
 
 export const uriToBase64 = async (uri: string): Promise<string> => {
+    if (Platform.OS === 'web') {
+        const res = await fetch(uri);
+        const blob = await res.blob();
+        return await blobToBase64(blob);
+    }
     return await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
 };
 

@@ -1,3 +1,5 @@
+import { RecipeParseError } from './errors';
+
 export const extractJsonObjectFromText = (text: string): string => {
     const trimmed = text.trim();
 
@@ -14,4 +16,13 @@ export const extractJsonObjectFromText = (text: string): string => {
     }
 
     return withoutFences.slice(firstBrace, lastBrace + 1).trim();
+};
+
+export const parseJsonFromModel = <T>(text: string): T => {
+    const jsonText = extractJsonObjectFromText(text);
+    try {
+        return JSON.parse(jsonText) as T;
+    } catch {
+        throw new RecipeParseError();
+    }
 };

@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAppStore } from '../store/appStore';
 import { aiService } from '../services/ai/aiService';
 import { prepareImageForUpload, uriToBase64 } from '../utils/media';
+import { isRecipeParseError } from '../utils/errors';
 
 export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void }> = ({ onNavigate }) => {
     const [searchInput, setSearchInput] = useState('');
@@ -17,7 +18,11 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
         try {
             await fn();
         } catch (error) {
-            Alert.alert('Fehler', 'Rezept konnte nicht generiert werden');
+            if (isRecipeParseError(error)) {
+                Alert.alert('Fehler', 'Antwort konnte nicht verarbeitet werden (JSON). Bitte erneut versuchen.');
+            } else {
+                Alert.alert('Fehler', 'Rezept konnte nicht generiert werden');
+            }
         } finally {
             setLoading(false);
         }
@@ -61,7 +66,6 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
             const recipe = await aiService.generateRecipe(
                 {
                     type: 'image',
-                    content: 'Menu Scan: Analysiere dieses Foto einer Speisekarte oder eines Gerichts. Extrahiere den Gerichtsnamen und erstelle daraus das Rezept.',
                     mediaData: base64,
                     mimeType: prepared.mimeType,
                     sourceTypeHint: 'ocr',
@@ -97,7 +101,6 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
             const recipe = await aiService.generateRecipe(
                 {
                     type: 'image',
-                    content: 'Pantry Check: Analysiere dieses Foto vom Kühlschrank/Vorrat. Erkenne die sichtbaren Zutaten und schlage ein passendes Rezept vor (Grundzutaten wie Salz/Öl darfst du annehmen).',
                     mediaData: base64,
                     mimeType: prepared.mimeType,
                     sourceTypeHint: 'pantry',

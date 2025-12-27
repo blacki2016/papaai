@@ -1,28 +1,31 @@
 import type { Recipe } from './recipe';
 
-export type AIInputType = 'text' | 'image' | 'video';
-
-export interface AIInput {
-    type: AIInputType;
-
-    /**
-     * For `text` and `image`: prompt/instructions.
-     * For `video`: local file URI (expo-image-picker asset uri).
-     */
-    content: string;
-
-    /** Optional base64 payload for images (without data: prefix). */
-    mediaData?: string;
-
-    /** Optional mime type hint for media. */
-    mimeType?: string;
-
+type SourceHint = {
     /** Optional attribution used in the Recipe domain model. */
     sourceTypeHint?: Recipe['sourceType'];
-}
+};
+
+export type AITextInput = SourceHint & {
+    type: 'text';
+    content: string;
+};
+
+export type AIImageInput = SourceHint & {
+    type: 'image';
+    mediaData: string;
+    mimeType: string;
+};
+
+export type AIVideoInput = SourceHint & {
+    type: 'video';
+    /** Local file URI (expo-image-picker asset uri). */
+    content: string;
+};
+
+export type AIInput = AITextInput | AIImageInput | AIVideoInput;
 
 export type AIStatusCallback = (status: string) => void;
 
 export interface IAIService {
-    generateRecipe(input: AIInput, onStatus?: AIStatusCallback): Promise<Recipe>;
+    generateRecipe(input: AIInput, onStatus: AIStatusCallback): Promise<Recipe>;
 }
