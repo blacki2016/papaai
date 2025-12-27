@@ -41,15 +41,7 @@ npm run web
 
 ## ⚙️ Konfiguration
 
-### OpenAI API Key
 
-1. Erstelle einen Account bei [OpenAI](https://platform.openai.com/)
-2. Generiere einen API Key
-3. Erstelle eine `.env` Datei im Projektverzeichnis:
-
-```env
-EXPO_PUBLIC_OPENAI_API_KEY=dein-api-key-hier
-```
 
 ### Gemini API Key (Multimodal)
 
@@ -71,7 +63,7 @@ papaai/
 ├── src/
 │   ├── components/       # UI-Komponenten (RecipeCard, Navigation)
 │   ├── screens/          # App-Screens (Home, Planner, Shopping, RecipeDetail)
-│   ├── services/         # OpenAI Service für Rezeptgenerierung
+│   ├── services/         # KI-Service für Rezeptgenerierung
 │   ├── store/            # Zustand Store für State Management
 │   └── types/            # TypeScript Type Definitions
 ├── assets/               # App Icons und Splash Screens
@@ -87,7 +79,7 @@ papaai/
 - **Styling**: NativeWind (Tailwind CSS für React Native)
 - **State Management**: Zustand
 - **Storage**: AsyncStorage
-- **AI**: OpenAI API (GPT-4o)
+- **AI**: Google Gemini API
 - **Camera**: expo-camera, expo-image-picker
 
 ## 📱 Features im Detail

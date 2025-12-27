@@ -1,6 +1,11 @@
 [build]
+  # Der Befehl, um die statische Webseite zu erzeugen
   command = "npx expo export -p web"
+  # Expo speichert den Web-Build standardmäßig in 'dist'
   publish = "dist"
 
-[context.production.environment]
-  NODE_ENV = "production"
+[[redirects]]
+  # Leitet alle Anfragen an die index.html (wichtig für Reloads)
+  from = "/*"
+  to = "/index.html"
+  status = 200npx expo install react-dom react-native-web @expo/metro-runtime
