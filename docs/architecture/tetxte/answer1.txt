@@ -1,0 +1,213 @@
+ChefMate – Architektur 06: Gemini API Integration (Multimodal)
+Ziel
+Ablösung der bisherigen Text-KI durch Google Gemini 1.5 Flash. Gründe:
+
+Multimodalität: Kann Bilder (Speisekarten) und Videos (Koch-Reels) direkt "sehen" und verstehen.
+
+JSON Mode: Das Modell unterstützt native JSON-Schemas, was unsere komplexe Datenstruktur (3 Varianten, Zutaten-Listen) extrem stabil macht.
+
+Performance: Flash ist optimiert für hohe Geschwindigkeit und geringe Latenz (ideal für Mobile).
+
+1. Architektur-Änderung: Service Adapter
+Um die App sauber zu halten, führen wir ein Interface ein. So weiß die UI nicht, ob OpenAI oder Gemini läuft.
+
+Datei: src/services/ai/ai.interface.ts
+
+TypeScript
+import { Recipe } from '../../types/recipe';
+
+export type AIInputType = 'text' | 'pantry' | 'image' | 'video_frames';
+
+export interface AIRequest {
+  type: AIInputType;
+  text?: string;           // User Input oder Prompt
+  mediaBase64?: string[];  // Ein Bild (OCR) oder mehrere Frames (Video)
+}
+
+export interface AIService {
+  generateRecipe(request: AIRequest): Promise<Recipe>;
+}
+2. Strategie: Video & Bilder (Client-Side Only)
+Da ChefMate aktuell kein Backend hat, müssen wir Limits von React Native beachten (große Video-Uploads führen zu Out-of-Memory Abstürzen).
+
+A) Speisekarten (OCR)
+
+Methode: Foto via expo-image-picker.
+
+Verarbeitung: Bild wird zu Base64 konvertiert.
+
+Prompt: "Analysiere dieses Bild. Extrahiere das Gericht."
+
+B) TikTok / Instagram Reels
+
+Da wir keine URLs scrapen können (CORS, Auth), nutzen wir einen Import-Workflow:
+
+User speichert das Reel in seine Galerie (oder macht Screen-Recording).
+
+App importiert das Video.
+
+Frame Extraction: Die App extrahiert client-seitig 5-10 Screenshots (Thumbnails) aus dem Video.
+
+Upload: Nur diese Bilder werden an Gemini gesendet. Das reicht der KI völlig, um Zutaten und Schritte zu erkennen.
+
+3. Implementierung: Gemini Service
+Pakete: npm install @google/generative-ai expo-file-system expo-video-thumbnails
+
+Datei: src/services/ai/geminiService.ts
+
+Das Schema (Herzstück)
+
+Wir definieren das exakte Output-Format passend zu 02-data-model.md.
+
+TypeScript
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { Recipe } from "../../types/recipe";
+import { AIRequest, AIService } from "./ai.interface";
+
+// API Key Setup (Client-Side Key)
+const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_API_KEY!);
+
+// Definiert die Struktur für Zutaten
+const ingredientSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    item: { type: SchemaType.STRING },
+    amount: { type: SchemaType.NUMBER },
+    unit: { type: SchemaType.STRING },
+    category: { type: SchemaType.STRING } // Wichtig für Einkaufsliste
+  },
+  required: ["item", "amount", "unit"]
+};
+
+// Definiert eine Rezept-Variante
+const versionSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    title: { type: SchemaType.STRING },
+    prepTime: { type: SchemaType.STRING },
+    steps: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    tips: { type: SchemaType.STRING },
+    ingredients: { type: SchemaType.ARRAY, items: ingredientSchema }
+  },
+  required: ["title", "steps", "ingredients"]
+};
+
+// Haupt-Schema
+const recipeResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    originalName: { type: SchemaType.STRING },
+    versions: {
+      type: SchemaType.OBJECT,
+      properties: {
+        student: versionSchema,
+        profi: versionSchema,
+        airfryer: versionSchema
+      },
+      required: ["student", "profi", "airfryer"]
+    }
+  },
+  required: ["originalName", "versions"]
+};
+
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  generationConfig: {
+    responseMimeType: "application/json",
+    responseSchema: recipeResponseSchema as any,
+  },
+});
+
+export const GeminiService: AIService = {
+  async generateRecipe(req: AIRequest): Promise<Recipe> {
+    const promptParts: any[] = [];
+
+    // System Context
+    promptParts.push("Du bist ChefMate. Erstelle ein Rezept-Objekt mit 3 Varianten (Student/Profi/Airfryer).");
+
+    // Input Handling
+    if (req.type === 'text' || req.type === 'pantry') {
+      promptParts.push(`Anfrage: ${req.text}`);
+    } 
+    else if (req.type === 'image' && req.mediaBase64) {
+      promptParts.push("Analysiere dieses Speisekarten-Foto/Gericht und erstelle das Rezept.");
+      promptParts.push({ inlineData: { data: req.mediaBase64[0], mimeType: "image/jpeg" } });
+    }
+    else if (req.type === 'video_frames' && req.mediaBase64) {
+      promptParts.push("Dies sind Frames aus einem Kochvideo. Rekonstruiere das Rezept, die Zutaten und Schritte.");
+      req.mediaBase64.forEach(base64 => {
+        promptParts.push({ inlineData: { data: base64, mimeType: "image/jpeg" } });
+      });
+    }
+
+    // Call API
+    const result = await model.generateContent(promptParts);
+    const json = JSON.parse(result.response.text());
+
+    // Mapping auf Domain Model
+    return {
+      ...json,
+      recipeId: crypto.randomUUID(), // oder uuid lib
+      createdAt: new Date().toISOString(),
+      sourceType: req.type === 'image' ? 'ocr' : (req.type === 'video_frames' ? 'social' : req.type)
+    };
+  }
+};
+4. Helper Utils (Media Processing)
+Datei: src/utils/media.ts
+
+TypeScript
+import * as FileSystem from 'expo-file-system';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+
+export const convertUriToBase64 = async (uri: string) => {
+  return await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+};
+
+export const extractFramesFromVideo = async (videoUri: string, frameCount = 5) => {
+  // Hier eine vereinfachte Logik. 
+  // Ideal: Video-Dauer ermitteln und Time-Steps berechnen.
+  // MVP: Wir nehmen einfach Thumbnails bei fixen Zeiten (0s, 3s, 6s, 10s, 15s)
+  // oder nutzen die 'generate'-Methode ohne Zeit, was oft den Anfang nimmt.
+  
+  const frames: string[] = [];
+  const timeSteps = [0, 2000, 5000, 10000, 15000]; // in ms
+
+  for (const time of timeSteps) {
+    try {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, { time, quality: 0.5 });
+      const base64 = await convertUriToBase64(uri);
+      frames.push(base64);
+    } catch (e) {
+      // Ignore errors (z.B. Video kürzer als 15s)
+    }
+  }
+  return frames;
+};
+5. UI Integration (HomeScreen)
+Der HomeScreen orchestriert nun die Inputs.
+
+Button "Scan Menu":
+
+ImagePicker.launchCameraAsync()
+
+-> GeminiService.generateRecipe({ type: 'image', mediaBase64: [b64] })
+
+Button "Import Reel":
+
+ImagePicker.launchImageLibraryAsync({ mediaTypes: 'Videos' })
+
+-> frames = await extractFramesFromVideo(result.uri)
+
+-> GeminiService.generateRecipe({ type: 'video_frames', mediaBase64: frames })
+
+6. Zusammenfassung
+Mit dieser Integration:
+
+Entfallen die "Mock"-Dialoge für OCR und Social.
+
+Ist die App fähig, Kochvideos visuell zu verstehen, ohne Backend-Download.
+
+Bleibt das Datenmodell durch das Gemini JSON Schema strikt typisiert.
+
+}
