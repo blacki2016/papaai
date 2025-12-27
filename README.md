@@ -51,7 +51,18 @@ npm run web
 EXPO_PUBLIC_OPENAI_API_KEY=dein-api-key-hier
 ```
 
-**Hinweis**: Aktuell verwendet die App Mock-Daten für Tests. Um echte KI-generierte Rezepte zu erhalten, ersetze in `src/services/openaiService.ts` die Funktion `generateMockRecipe` durch `generateRecipe`.
+### Gemini API Key (Multimodal)
+
+Für Menu Scan (Bild), Pantry Check (Bild) und Reel-to-Recipe (Video) nutzt die App Google Gemini.
+
+1. API Key in Google AI Studio erstellen
+2. `.env` im Projektverzeichnis anlegen:
+
+```env
+EXPO_PUBLIC_GEMINI_API_KEY=dein-gemini-api-key-hier
+```
+
+**Hinweis**: API-Keys liegen client-seitig (Expo). Für Produktion empfiehlt sich ein Proxy (z.B. Firebase/Supabase Edge Function).
 
 ## 📁 Projektstruktur
 

@@ -2,21 +2,20 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppStore } from '../store/appStore';
-import { generateRecipe } from '../services/openaiService';
+import { aiService } from '../services/ai/aiService';
+import { prepareImageForUpload, uriToBase64 } from '../utils/media';
 
 export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void }> = ({ onNavigate }) => {
     const [searchInput, setSearchInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [statusText, setStatusText] = useState<string>('');
     const { recipes, addRecipe } = useAppStore();
 
-    const handleGenerate = async (input: string, sourceType: 'text' | 'pantry' | 'ocr' | 'social') => {
-        if (!input.trim()) return;
-
+    const run = async (fn: () => Promise<void>) => {
         setLoading(true);
+        setStatusText('');
         try {
-            const recipe = await generateRecipe(input, sourceType);
-            addRecipe(recipe);
-            onNavigate('recipe-detail', { recipe });
+            await fn();
         } catch (error) {
             Alert.alert('Fehler', 'Rezept konnte nicht generiert werden');
         } finally {
@@ -24,7 +23,21 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
         }
     };
 
-    const handleCamera = async () => {
+    const handleGenerateText = async () => {
+        const input = searchInput.trim();
+        if (!input) return;
+
+        await run(async () => {
+            const recipe = await aiService.generateRecipe(
+                { type: 'text', content: input, sourceTypeHint: 'text' },
+                setStatusText
+            );
+            addRecipe(recipe);
+            onNavigate('recipe-detail', { recipe });
+        });
+    };
+
+    const handleMenuScan = async () => {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
             Alert.alert('Berechtigung erforderlich', 'Kamera-Zugriff wird benötigt');
@@ -36,12 +49,90 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
             quality: 0.8,
         });
 
-        if (!result.canceled) {
-            Alert.prompt('Gericht erkannt', 'Welches Gericht wurde erkannt?', [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Generieren', onPress: (text?: string) => text && handleGenerate(text, 'ocr') }
-            ]);
+        if (result.canceled) return;
+        const asset = result.assets?.[0];
+        if (!asset?.uri) return;
+
+        await run(async () => {
+            setStatusText('Bild wird vorbereitet...');
+            const prepared = await prepareImageForUpload(asset.uri);
+            const base64 = await uriToBase64(prepared.uri);
+
+            const recipe = await aiService.generateRecipe(
+                {
+                    type: 'image',
+                    content: 'Menu Scan: Analysiere dieses Foto einer Speisekarte oder eines Gerichts. Extrahiere den Gerichtsnamen und erstelle daraus das Rezept.',
+                    mediaData: base64,
+                    mimeType: prepared.mimeType,
+                    sourceTypeHint: 'ocr',
+                },
+                setStatusText
+            );
+            addRecipe(recipe);
+            onNavigate('recipe-detail', { recipe });
+        });
+    };
+
+    const handlePantryScan = async () => {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert('Berechtigung erforderlich', 'Kamera-Zugriff wird benötigt');
+            return;
         }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.8,
+        });
+
+        if (result.canceled) return;
+        const asset = result.assets?.[0];
+        if (!asset?.uri) return;
+
+        await run(async () => {
+            setStatusText('Bild wird vorbereitet...');
+            const prepared = await prepareImageForUpload(asset.uri);
+            const base64 = await uriToBase64(prepared.uri);
+
+            const recipe = await aiService.generateRecipe(
+                {
+                    type: 'image',
+                    content: 'Pantry Check: Analysiere dieses Foto vom Kühlschrank/Vorrat. Erkenne die sichtbaren Zutaten und schlage ein passendes Rezept vor (Grundzutaten wie Salz/Öl darfst du annehmen).',
+                    mediaData: base64,
+                    mimeType: prepared.mimeType,
+                    sourceTypeHint: 'pantry',
+                },
+                setStatusText
+            );
+            addRecipe(recipe);
+            onNavigate('recipe-detail', { recipe });
+        });
+    };
+
+    const handleImportReel = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert('Berechtigung erforderlich', 'Galerie-Zugriff wird benötigt');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['videos'],
+            quality: 1,
+        });
+
+        if (result.canceled) return;
+        const asset = result.assets?.[0];
+        if (!asset?.uri) return;
+
+        await run(async () => {
+            const recipe = await aiService.generateRecipe(
+                { type: 'video', content: asset.uri, sourceTypeHint: 'social' },
+                setStatusText
+            );
+            addRecipe(recipe);
+            onNavigate('recipe-detail', { recipe });
+        });
     };
 
     return (
@@ -61,7 +152,7 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
                             className="flex-1 bg-white px-4 py-3 rounded-xl border border-gray-200"
                         />
                         <TouchableOpacity
-                            onPress={() => handleGenerate(searchInput, 'text')}
+                            onPress={handleGenerateText}
                             disabled={loading || !searchInput.trim()}
                             className="bg-chef-500 px-6 py-3 rounded-xl active:opacity-80"
                         >
@@ -76,7 +167,8 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
                 </Text>
                 <View className="flex-row gap-3 mb-6">
                     <TouchableOpacity
-                        onPress={handleCamera}
+                        onPress={handleMenuScan}
+                        disabled={loading}
                         className="flex-1 bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-2xl items-center"
                     >
                         <Text className="text-3xl mb-2">📸</Text>
@@ -84,29 +176,21 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        onPress={() => {
-                            Alert.prompt('Vorrat', 'Zutaten eingeben (mit Komma getrennt):', [
-                                { text: 'Abbrechen', style: 'cancel' },
-                                { text: 'Generieren', onPress: (text?: string) => text && handleGenerate(text, 'pantry') }
-                            ]);
-                        }}
+                        onPress={handlePantryScan}
+                        disabled={loading}
                         className="flex-1 bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 rounded-2xl items-center"
                     >
                         <Text className="text-3xl mb-2">🥘</Text>
-                        <Text className="text-white text-xs font-medium">Vorrat</Text>
+                        <Text className="text-white text-xs font-medium">Kühlschrank</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        onPress={() => {
-                            Alert.prompt('Social Link', 'Rezept-URL einfügen:', [
-                                { text: 'Abbrechen', style: 'cancel' },
-                                { text: 'Importieren', onPress: (text: string | undefined) => text && handleGenerate(`Rezept von ${text}`, 'social') }
-                            ]);
-                        }}
+                        onPress={handleImportReel}
+                        disabled={loading}
                         className="flex-1 bg-gradient-to-br from-pink-500 to-rose-600 p-4 rounded-2xl items-center"
                     >
                         <Text className="text-3xl mb-2">🔗</Text>
-                        <Text className="text-white text-xs font-medium">Social Link</Text>
+                        <Text className="text-white text-xs font-medium">Reel import</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -147,7 +231,7 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
 
                 {loading && (
                     <View className="mt-6 items-center">
-                        <Text className="text-gray-500">Generiere Rezept... ⏳</Text>
+                        <Text className="text-gray-500">{statusText || 'Bitte warten...'} ⏳</Text>
                     </View>
                 )}
             </View>
