@@ -29,7 +29,7 @@ export const SocialImportScreen: React.FC<SocialImportScreenProps> = ({ navigati
     }
 
     if (!apiKey) {
-      setError('Please set your OpenAI API key in Settings');
+      setError('Please set your Gemini API key in Settings');
       return;
     }
 

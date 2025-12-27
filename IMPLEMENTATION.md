@@ -56,7 +56,7 @@ papaai/
 │   ├── types/
 │   │   └── recipe.ts              # TypeScript interfaces
 │   ├── services/
-│   │   └── aiService.ts           # OpenAI API integration
+│   │   └── aiService.ts           # Google Gemini API integration
 │   ├── store/
 │   │   └── appStore.ts            # Zustand state + AsyncStorage
 │   └── screens/
@@ -80,7 +80,7 @@ papaai/
 ✅ React Navigation (Stack Navigator)  
 ✅ Zustand (State Management)  
 ✅ AsyncStorage (Data Persistence)  
-✅ OpenAI API (GPT-4o integration)  
+✅ Google Gemini API (Gemini 1.5 Pro integration)  
 ✅ Expo Image Picker & Camera  
 
 ## 📊 Data Structure
@@ -120,10 +120,10 @@ interface Ingredient {
    npm install
    ```
 
-2. **Configure OpenAI API Key**:
+2. **Configure Google Gemini API Key**:
    - Open the app
    - Navigate to Settings
-   - Enter your OpenAI API key (from platform.openai.com)
+   - Enter your Google Gemini API key (from aistudio.google.com/app/apikey)
 
 3. **Run the app**:
    ```bash
@@ -170,7 +170,7 @@ interface Ingredient {
 ## ✨ Key Features
 
 ### AI Service (`aiService.ts`)
-- Configurable OpenAI API integration
+- Configurable Google Gemini API integration
 - Prompt engineering for optimal results
 - Structured JSON output parsing
 - Error handling and validation
@@ -194,14 +194,14 @@ The shopping list aggregation logic:
 ## 🔐 Security & Privacy
 
 - API keys stored locally with AsyncStorage
-- No data sent to external servers (except OpenAI API)
+- No data sent to external servers (except Google Gemini API)
 - Secure input handling for all user data
 
 ## 📝 Notes
 
 - **OCR Implementation**: Basic camera integration included. Full OCR requires additional service (Google Vision, AWS Textract, etc.)
 - **Social Media Import**: Placeholder for video transcript extraction. Requires external API for production
-- **Recipe Quality**: AI output quality depends on OpenAI API key and model configuration
+- **Recipe Quality**: AI output quality depends on Google Gemini API key and model configuration
 
 ## 🎯 Requirements Met
 
@@ -212,7 +212,7 @@ The shopping list aggregation logic:
 ✅ Smart shopping list with aggregation  
 ✅ Zustand state management  
 ✅ AsyncStorage persistence  
-✅ OpenAI API integration  
+✅ Google Gemini API integration  
 ✅ Exact JSON schema compliance  
 
 ## 🚀 Next Steps (Optional Enhancements)

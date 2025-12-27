@@ -61,7 +61,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('Settings')}
           >
             <Text style={styles.warningText}>
-              ⚠️ Please set your OpenAI API key in Settings
+              ⚠️ Please set your Google Gemini API key in Settings
             </Text>
           </TouchableOpacity>
         )}

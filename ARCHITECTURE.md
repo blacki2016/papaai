@@ -26,7 +26,7 @@
                                                    ▼
                                           ┌──────────────┐
                                           │ AI Service   │
-                                          │ (OpenAI API) │
+                                          │ (Google Gemini API) │
                                           └──────────────┘
 ```
 
@@ -98,7 +98,7 @@
          ┌───────────────────────┐
          │   AI Service          │
          │   • Build prompt      │
-         │   • Call OpenAI API   │
+         │   • Call Google Gemini API   │
          │   • Parse JSON        │
          └───────────┬───────────┘
                      │
@@ -281,7 +281,7 @@ AppStore {
 ### Recipe Generation (AIService)
 1. Receive import source (type + data)
 2. Build context-specific prompt
-3. Call OpenAI API with system + user messages
+3. Call Google Gemini API with system + user messages
 4. Parse JSON response
 5. Validate structure
 6. Generate UUID if missing
@@ -313,7 +313,7 @@ papaai/
 │   ├── types/
 │   │   └── recipe.ts              (Interfaces)
 │   ├── services/
-│   │   └── aiService.ts           (OpenAI integration)
+│   │   └── aiService.ts           (Google Gemini integration)
 │   ├── store/
 │   │   └── appStore.ts            (Zustand + AsyncStorage)
 │   └── screens/
@@ -333,7 +333,7 @@ papaai/
 | **Zustand** | Simple, lightweight, less boilerplate than Redux |
 | **AsyncStorage** | Built-in, perfect for MVP, easy to upgrade to Supabase |
 | **React Navigation** | Standard for RN, well-documented, flexible |
-| **OpenAI GPT-4o** | Best for structured output, recipe understanding |
+| **Google Gemini Gemini 1.5 Pro** | Best for structured output, recipe understanding |
 
 ## Future Enhancements
 

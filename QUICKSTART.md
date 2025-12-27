@@ -8,7 +8,7 @@ Get up and running with ChefMate in 5 minutes!
 - npm or yarn package manager
 - Expo Go app (for testing on physical device) OR
 - Android Studio / Xcode (for emulator)
-- OpenAI API key (get at https://platform.openai.com)
+- Google Gemini API key (get at https://aistudio.google.com/app/apikey)
 
 ## Installation
 
@@ -39,9 +39,9 @@ After running `npm start`, you'll see a QR code in the terminal.
 - Press `w` for web browser
 
 ### Step 2: Configure API Key
-1. When the app opens, you'll see a warning: "Please set your OpenAI API key"
+1. When the app opens, you'll see a warning: "Please set your Google Gemini API key"
 2. Tap the warning OR navigate to Settings (gear icon)
-3. Enter your OpenAI API key (starts with `sk-`)
+3. Enter your Google Gemini API key (starts with `sk-`)
 4. Tap "Save API Key"
 
 ### Step 3: Import Your First Recipe
@@ -95,7 +95,7 @@ After running `npm start`, you'll see a QR code in the terminal.
 
 ### API Usage & Costs
 - Each recipe generation costs approximately $0.05-0.15 (depending on complexity)
-- Monitor your usage at platform.openai.com
+- Monitor your usage at aistudio.google.com/app/apikey
 - Set up billing limits to control costs
 
 ### Recipe Quality
@@ -120,7 +120,7 @@ After running `npm start`, you'll see a QR code in the terminal.
 ### "Failed to generate recipe"
 - Check your API key is correct (starts with `sk-`)
 - Ensure you have internet connection
-- Verify your OpenAI account has credits
+- Verify your Google Gemini account has credits
 - Try simpler recipe names
 
 ### App crashes on start
@@ -176,7 +176,7 @@ npm start -- --clear
 
 - **Documentation**: See README.md, IMPLEMENTATION.md, EXAMPLES.md
 - **Issues**: https://github.com/blacki2016/papaai/issues
-- **OpenAI Help**: https://platform.openai.com/docs
+- **Google Gemini Help**: https://aistudio.google.com/app/apikey/docs
 
 ---
 

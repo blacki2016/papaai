@@ -28,7 +28,7 @@ export const TextSearchScreen: React.FC<TextSearchScreenProps> = ({ navigation }
     }
 
     if (!apiKey) {
-      setError('Please set your OpenAI API key in Settings');
+      setError('Please set your Gemini API key in Settings');
       return;
     }
 

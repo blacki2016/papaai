@@ -12,29 +12,17 @@ export class AIService {
 
   constructor(config: AIServiceConfig) {
     this.apiKey = config.apiKey;
-    this.model = config.model || 'gpt-4o';
-    this.baseURL = 'https://api.openai.com/v1/chat/completions';
+    this.model = config.model || 'gemini-1.5-pro';
+    this.baseURL = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
   }
 
   /**
    * Generate three recipe versions from any import source
    */
   async generateRecipeVersions(source: ImportSource): Promise<Recipe> {
-    const prompt = this.buildPrompt(source);
+    const userPrompt = this.buildPrompt(source);
     
-    try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            {
-              role: 'system',
-              content: `You are a professional chef assistant that creates three distinct versions of recipes:
+    const systemPrompt = `You are a professional chef assistant that creates three distinct versions of recipes:
 1. Student/Simple: Optimized for speed, low budget, minimal equipment, and available ingredients.
 2. Airfryer/Gadget: Optimized for airfryer or convenience devices.
 3. Profi/Authentic: Focuses on authentic techniques, specific original ingredients, and intermediate steps for maximum taste.
@@ -66,26 +54,53 @@ Always respond with valid JSON matching this exact structure:
       "tips": "Helpful tip"
     }
   }
-}`
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
+}
+
+Respond ONLY with the JSON, no additional text.`;
+
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+    
+    try {
+      const response = await fetch(`${this.baseURL}?key=${this.apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: fullPrompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          }
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`AI API error: ${response.statusText}`);
+        const errorData = await response.text();
+        throw new Error(`Gemini API error: ${response.statusText} - ${errorData}`);
       }
 
       const data = await response.json();
-      const content = data.choices[0].message.content;
+      
+      // Extract text from Gemini response structure
+      const content = data.candidates[0].content.parts[0].text;
+      
+      // Clean up markdown code blocks if present
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/```\s*$/, '');
+      }
       
       // Parse the JSON response
-      const recipe = JSON.parse(content);
+      const recipe = JSON.parse(cleanContent);
       
       // Ensure recipeId is present
       if (!recipe.recipeId) {

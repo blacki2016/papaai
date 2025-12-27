@@ -24,7 +24,7 @@ This document provides a high-level summary of the ChefMate implementation.
 - **Social Import**: TikTok/Instagram URL → AI extracts recipe
 
 ### ✅ Tri-Level Recipe Engine
-Every recipe is automatically processed by OpenAI GPT-4o to create:
+Every recipe is automatically processed by Google Gemini Gemini 1.5 Pro to create:
 - Student version (15-20 min, budget-friendly)
 - Airfryer version (20-30 min, convenience-focused)
 - Profi version (40+ min, authentic techniques)
@@ -50,7 +50,7 @@ Frontend:     React Native + Expo (TypeScript)
 Navigation:   React Navigation (Stack)
 State:        Zustand
 Persistence:  AsyncStorage
-AI:           OpenAI API (GPT-4o)
+AI:           Google Gemini API
 Images:       Expo Image Picker & Camera
 ```
 
@@ -59,7 +59,7 @@ Images:       Expo Image Picker & Camera
 papaai/
 ├── src/
 │   ├── types/recipe.ts           # TypeScript interfaces
-│   ├── services/aiService.ts     # OpenAI integration
+│   ├── services/aiService.ts     # Google Gemini integration
 │   ├── store/appStore.ts         # Zustand + AsyncStorage
 │   └── screens/                  # 10 UI screens
 ├── App.tsx                       # Navigation setup
@@ -68,7 +68,7 @@ papaai/
 
 ### Key Files
 - **10 Screen Components**: Home, Import (4), Detail, List, Planner, Shopping, Settings
-- **1 AI Service**: OpenAI GPT-4o integration with prompt engineering
+- **1 AI Service**: Google Gemini Gemini 1.5 Pro integration with prompt engineering
 - **1 State Store**: Zustand with AsyncStorage persistence
 - **4 Type Definitions**: Recipe, RecipeVersion, Ingredient, WeeklyPlan
 
@@ -155,7 +155,7 @@ npm start
 ### First Use
 1. Open app on device/emulator
 2. Navigate to Settings
-3. Enter OpenAI API key (from platform.openai.com)
+3. Enter Google Gemini API key (from aistudio.google.com/app/apikey)
 4. Start importing recipes!
 
 ---
@@ -168,7 +168,7 @@ npm start
 | TypeScript | ✅ |
 | Zustand State Management | ✅ |
 | AsyncStorage Persistence | ✅ |
-| OpenAI API Integration | ✅ |
+| Google Gemini API Integration | ✅ |
 | Tri-Level Recipe Engine | ✅ |
 | Multi-Source Import (4 types) | ✅ |
 | Weekly Planner | ✅ |
@@ -243,7 +243,7 @@ The app is ready for:
 
 This project demonstrates:
 - Mobile app development with React Native
-- AI integration (OpenAI API)
+- AI integration (Google Gemini API)
 - State management (Zustand)
 - Data persistence (AsyncStorage)
 - Navigation (React Navigation)
@@ -257,7 +257,7 @@ This project demonstrates:
 
 - **Issues**: GitHub Issues
 - **Documentation**: See README.md and other docs
-- **OpenAI Help**: platform.openai.com/docs
+- **Google Gemini Help**: aistudio.google.com/app/apikey/docs
 
 ---
 
@@ -283,7 +283,7 @@ ChefMate is a **complete, functional, well-documented** AI-powered recipe app th
 
 **Status**: ✅ **COMPLETE & PRODUCTION-READY**
 
-**Built with**: React Native, TypeScript, Expo, Zustand, OpenAI API
+**Built with**: React Native, TypeScript, Expo, Zustand, Google Gemini API
 
 **License**: MIT
 

@@ -25,13 +25,6 @@ export const SettingsScreen: React.FC = () => {
       return;
     }
 
-    if (!inputKey.startsWith('sk-')) {
-      Alert.alert(
-        'Warning',
-        'OpenAI API keys typically start with "sk-". Are you sure this is correct?'
-      );
-    }
-
     setApiKey(inputKey.trim());
     Alert.alert('Success', 'API key saved successfully');
   };
@@ -43,11 +36,11 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.title}>Settings</Text>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>OpenAI API Configuration</Text>
+            <Text style={styles.sectionTitle}>Google Gemini API Configuration</Text>
             <Text style={styles.label}>API Key:</Text>
             <TextInput
               style={styles.input}
-              placeholder="sk-..."
+              placeholder="AIza..."
               value={inputKey}
               onChangeText={setInputKey}
               secureTextEntry
@@ -66,27 +59,28 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.infoBox}>
             <Text style={styles.infoTitle}>🔑 How to get an API Key:</Text>
             <Text style={styles.infoItem}>
-              1. Go to platform.openai.com
+              1. Go to aistudio.google.com/app/apikey
             </Text>
             <Text style={styles.infoItem}>
-              2. Sign up or log in
+              2. Sign in with your Google account
             </Text>
             <Text style={styles.infoItem}>
-              3. Navigate to API Keys section
+              3. Click "Create API Key"
             </Text>
             <Text style={styles.infoItem}>
-              4. Create a new secret key
+              4. Select or create a Google Cloud project
             </Text>
             <Text style={styles.infoItem}>
-              5. Copy and paste it here
+              5. Copy and paste the key here
             </Text>
           </View>
 
           <View style={styles.warningBox}>
             <Text style={styles.warningTitle}>⚠️ Important:</Text>
             <Text style={styles.warningText}>
-              Using the OpenAI API will incur costs based on usage. Make sure to
-              monitor your usage and set up billing limits in your OpenAI account.
+              Using the Gemini API may incur costs based on usage. Check the
+              pricing at ai.google.dev/pricing and monitor your usage in the
+              Google Cloud Console.
             </Text>
           </View>
 

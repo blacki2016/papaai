@@ -32,7 +32,7 @@ An intelligent mobile application built with React Native and Expo that transfor
 - **Navigation**: React Navigation (Stack Navigator)
 - **State Management**: Zustand
 - **Storage**: AsyncStorage
-- **AI Integration**: OpenAI API (GPT-4o)
+- **AI Integration**: Google Gemini API
 - **Image Handling**: Expo Image Picker & Camera
 
 ## Installation
@@ -62,13 +62,13 @@ npm run web      # For web browser
 
 ## Configuration
 
-### OpenAI API Key
+### Google Gemini API Key
 
 1. Open the app and navigate to **Settings**
-2. Enter your OpenAI API key (get one at https://platform.openai.com)
+2. Enter your Google Gemini API key (get one at https://aistudio.google.com/app/apikey)
 3. The key is stored locally and securely on your device
 
-**Important**: Using the OpenAI API incurs costs. Monitor your usage and set billing limits.
+**Important**: Using the Google Gemini API incurs costs. Monitor your usage and set billing limits.
 
 ## Usage Guide
 
@@ -139,7 +139,7 @@ papaai/
 │   ├── types/
 │   │   └── recipe.ts          # TypeScript interfaces
 │   ├── services/
-│   │   └── aiService.ts       # OpenAI API integration
+│   │   └── aiService.ts       # Google Gemini API integration
 │   ├── store/
 │   │   └── appStore.ts        # Zustand state management
 │   ├── screens/
