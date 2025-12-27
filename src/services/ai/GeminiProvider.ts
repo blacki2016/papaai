@@ -3,6 +3,7 @@ import { IAIService, AIInput } from '../../types/ai';
 import { Recipe, RecipeVersions } from '../../types/recipe';
 import { v4 as uuidv4 } from 'uuid';
 import { parseAIJson } from './jsonParser';
+import { uploadVideoFile, waitForFileActive, deleteFile } from './fileApi';
 
 const SYSTEM_PROMPT = `You are a professional chef AI that creates three distinct versions of any recipe:
 1. STUDENT/SIMPLE: Fast, budget-friendly, minimal equipment, readily available ingredients
@@ -161,16 +162,60 @@ export class GeminiProvider implements IAIService {
 
     /**
      * Generate recipe from video input
-     * This is more complex and requires file upload to Google's servers
+     * Requires uploading video to Google File API, then polling for completion
      */
     private async generateFromVideo(input: AIInput): Promise<Recipe> {
-        // For now, we'll throw an error to indicate this needs implementation
-        // The full implementation would require:
-        // 1. Upload video to Google File API
-        // 2. Poll for processing completion
-        // 3. Generate content with file URI
-        // 4. Delete file after processing
-        throw new Error('Video processing is not yet implemented. This requires File API integration.');
+        if (!input.mediaData) {
+            throw new Error('Video URI is required for video input type');
+        }
+
+        let fileName: string | null = null;
+
+        try {
+            // Step 1: Upload video file
+            console.log('Uploading video to Google File API...');
+            const uploadResponse = await uploadVideoFile(
+                input.mediaData, // Video URI
+                'video/mp4',
+                this.apiKey
+            );
+
+            fileName = uploadResponse.file.name;
+            console.log(`Video uploaded: ${fileName}`);
+
+            // Step 2: Poll for file processing to complete
+            console.log('Waiting for video processing...');
+            const fileResponse = await waitForFileActive(fileName, this.apiKey);
+            console.log('Video processing complete');
+
+            // Step 3: Generate content with video
+            const model = this.getModel('video');
+            const prompt = `${SYSTEM_PROMPT}\n\n${this.buildPrompt(input)}`;
+
+            const result = await model.generateContent([
+                prompt,
+                {
+                    fileData: {
+                        mimeType: fileResponse.file.mimeType,
+                        fileUri: fileResponse.file.uri,
+                    },
+                },
+            ]);
+
+            const response = result.response;
+            const text = response.text();
+
+            return this.parseRecipeResponse(text, input.sourceType);
+        } catch (error) {
+            console.error('Error generating recipe from video:', error);
+            throw error;
+        } finally {
+            // Step 4: Cleanup - Delete the file from Google servers
+            if (fileName) {
+                console.log('Cleaning up uploaded file...');
+                await deleteFile(fileName, this.apiKey);
+            }
+        }
     }
 
     /**
