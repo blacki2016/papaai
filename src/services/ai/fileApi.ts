@@ -3,6 +3,11 @@
  * Handles video upload and polling for the Gemini API
  */
 
+// Configuration constants
+const DEFAULT_MAX_POLLING_ATTEMPTS = 30;
+const DEFAULT_INITIAL_POLLING_DELAY_MS = 1000;
+const MAX_POLLING_DELAY_MS = 10000;
+
 export interface FileUploadResponse {
     file: {
         name: string;
@@ -73,8 +78,8 @@ export const uploadVideoFile = async (
 export const waitForFileActive = async (
     fileName: string,
     apiKey: string,
-    maxAttempts: number = 30,
-    initialDelayMs: number = 1000
+    maxAttempts: number = DEFAULT_MAX_POLLING_ATTEMPTS,
+    initialDelayMs: number = DEFAULT_INITIAL_POLLING_DELAY_MS
 ): Promise<FileUploadResponse> => {
     let delayMs = initialDelayMs;
     
@@ -105,7 +110,7 @@ export const waitForFileActive = async (
             await new Promise(resolve => setTimeout(resolve, delayMs));
             
             // Increase delay for next attempt (max 10 seconds)
-            delayMs = Math.min(delayMs * 1.5, 10000);
+            delayMs = Math.min(delayMs * 1.5, MAX_POLLING_DELAY_MS);
         } catch (error) {
             console.error(`Polling attempt ${attempt + 1} failed:`, error);
             if (attempt === maxAttempts - 1) {

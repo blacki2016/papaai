@@ -3,6 +3,9 @@ import { IAIService, AIInput } from '../../types/ai';
 import { Recipe, RecipeVersions } from '../../types/recipe';
 import { v4 as uuidv4 } from 'uuid';
 
+// Configuration constants
+const OPENAI_MODEL = 'gpt-4o';
+
 const SYSTEM_PROMPT = `You are a professional chef AI that creates three distinct versions of any recipe:
 1. STUDENT/SIMPLE: Fast, budget-friendly, minimal equipment, readily available ingredients
 2. AIRFRYER/GADGET: Optimized for airfryer or modern kitchen gadgets
@@ -91,7 +94,7 @@ export class OpenAIProvider implements IAIService {
             const userPrompt = this.buildPrompt(input);
 
             const response = await this.openai.chat.completions.create({
-                model: 'gpt-4o',
+                model: OPENAI_MODEL,
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
                     { role: 'user', content: userPrompt }
