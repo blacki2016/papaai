@@ -11,8 +11,8 @@ export const createAIService = (): IAIService => {
     const geminiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     const openaiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
-    // Prefer Gemini for multimodal support
-    if (geminiKey && geminiKey !== 'your-gemini-api-key-here') {
+    // Validate and prefer Gemini for multimodal support
+    if (geminiKey && geminiKey.trim() !== '' && geminiKey !== 'your-gemini-api-key-here') {
         try {
             return new GeminiProvider();
         } catch (error) {
@@ -21,7 +21,7 @@ export const createAIService = (): IAIService => {
     }
 
     // Fallback to OpenAI
-    if (openaiKey && openaiKey !== 'your-openai-api-key-here') {
+    if (openaiKey && openaiKey.trim() !== '' && openaiKey !== 'your-openai-api-key-here') {
         try {
             return new OpenAIProvider();
         } catch (error) {

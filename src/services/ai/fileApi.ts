@@ -64,17 +64,20 @@ export const uploadVideoFile = async (
 
 /**
  * Poll the file status until it's ACTIVE or FAILED
+ * Uses exponential backoff to reduce API calls
  * @param fileName - The file name from the upload response (e.g., "files/xyz")
  * @param apiKey - Gemini API key
  * @param maxAttempts - Maximum number of polling attempts (default: 30)
- * @param delayMs - Delay between attempts in milliseconds (default: 2000)
+ * @param initialDelayMs - Initial delay between attempts in milliseconds (default: 1000)
  */
 export const waitForFileActive = async (
     fileName: string,
     apiKey: string,
     maxAttempts: number = 30,
-    delayMs: number = 2000
+    initialDelayMs: number = 1000
 ): Promise<FileUploadResponse> => {
+    let delayMs = initialDelayMs;
+    
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
             const response = await fetch(
@@ -98,17 +101,20 @@ export const waitForFileActive = async (
                 throw new Error(`File processing failed: ${result.file.error?.message || 'Unknown error'}`);
             }
 
-            // Still PROCESSING, wait and retry
+            // Still PROCESSING, wait with exponential backoff
             await new Promise(resolve => setTimeout(resolve, delayMs));
+            
+            // Increase delay for next attempt (max 10 seconds)
+            delayMs = Math.min(delayMs * 1.5, 10000);
         } catch (error) {
             console.error(`Polling attempt ${attempt + 1} failed:`, error);
             if (attempt === maxAttempts - 1) {
-                throw new Error('File processing timeout');
+                throw new Error('File processing timeout - video may be too large or processing failed');
             }
         }
     }
 
-    throw new Error('File processing timeout');
+    throw new Error('File processing timeout - video may be too large or processing failed');
 };
 
 /**

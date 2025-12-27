@@ -141,13 +141,21 @@ export class GeminiProvider implements IAIService {
 
         const model = this.getModel('image');
         
-        // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
-        const base64Data = input.mediaData.replace(/^data:image\/\w+;base64,/, '');
+        // Extract MIME type and base64 data from data URL
+        let mimeType = 'image/jpeg'; // Default
+        let base64Data = input.mediaData;
+        
+        // Check if it's a data URL and extract MIME type
+        const dataUrlMatch = input.mediaData.match(/^data:([^;]+);base64,(.*)$/);
+        if (dataUrlMatch) {
+            mimeType = dataUrlMatch[1];
+            base64Data = dataUrlMatch[2];
+        }
 
         const imagePart = {
             inlineData: {
                 data: base64Data,
-                mimeType: 'image/jpeg', // Default to JPEG, could be detected from data URL
+                mimeType: mimeType,
             },
         };
 
@@ -172,11 +180,14 @@ export class GeminiProvider implements IAIService {
         let fileName: string | null = null;
 
         try {
+            // Detect MIME type from file extension or default to mp4
+            const mimeType = this.detectVideoMimeType(input.mediaData);
+            
             // Step 1: Upload video file
             console.log('Uploading video to Google File API...');
             const uploadResponse = await uploadVideoFile(
                 input.mediaData, // Video URI
-                'video/mp4',
+                mimeType,
                 this.apiKey
             );
 
@@ -215,6 +226,25 @@ export class GeminiProvider implements IAIService {
                 console.log('Cleaning up uploaded file...');
                 await deleteFile(fileName, this.apiKey);
             }
+        }
+    }
+
+    /**
+     * Detect video MIME type from file URI
+     */
+    private detectVideoMimeType(uri: string): string {
+        const extension = uri.split('.').pop()?.toLowerCase();
+        switch (extension) {
+            case 'mp4':
+                return 'video/mp4';
+            case 'mov':
+                return 'video/quicktime';
+            case 'webm':
+                return 'video/webm';
+            case 'avi':
+                return 'video/x-msvideo';
+            default:
+                return 'video/mp4'; // Default fallback
         }
     }
 
