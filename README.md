@@ -8,8 +8,9 @@ Ein React Native Expo App, die KI nutzt, um Rezepte in drei verschiedene Variant
 - **Multi-Source Import**: 
   - Textsuche
   - Pantry/Vorrat (Zutaten eingeben)
-  - OCR (Foto von Speisekarte)
-  - Social Media Links (TikTok/Instagram)
+  - **OCR (Foto von Speisekarte mit Gemini Vision)** ✅
+  - **Kamera-Integration für Speisen-Fotos** ✅
+  - Social Media Links (In Entwicklung)
 - **Wochenplaner**: Organisiere deine Mahlzeiten für die ganze Woche
 - **Smart Shopping List**: Automatische Aggregation aller benötigten Zutaten
 
@@ -41,17 +42,41 @@ npm run web
 
 ## ⚙️ Konfiguration
 
-### OpenAI API Key
+### AI Provider Setup
 
-1. Erstelle einen Account bei [OpenAI](https://platform.openai.com/)
+Die App unterstützt zwei KI-Provider:
+
+#### Google Gemini (Empfohlen)
+
+Google Gemini bietet native Unterstützung für multimodale Eingaben (Text, Bild, Video):
+
+1. Erstelle einen Account bei [Google AI Studio](https://ai.google.dev/)
 2. Generiere einen API Key
 3. Erstelle eine `.env` Datei im Projektverzeichnis:
 
 ```env
-EXPO_PUBLIC_OPENAI_API_KEY=dein-api-key-hier
+EXPO_PUBLIC_GEMINI_API_KEY=dein-gemini-api-key-hier
 ```
 
-**Hinweis**: Aktuell verwendet die App Mock-Daten für Tests. Um echte KI-generierte Rezepte zu erhalten, ersetze in `src/services/openaiService.ts` die Funktion `generateMockRecipe` durch `generateRecipe`.
+**Vorteile**:
+- Native Bild-Verarbeitung (OCR für Speisekarten)
+- Video-Analyse (Cooking Videos/Reels) - In Entwicklung
+- Großes Kontext-Fenster
+- Kosteneffizient
+
+#### OpenAI (Legacy/Fallback)
+
+Alternativ kann OpenAI verwendet werden (nur Text-Eingabe):
+
+1. Erstelle einen Account bei [OpenAI](https://platform.openai.com/)
+2. Generiere einen API Key
+3. Füge in der `.env` Datei hinzu:
+
+```env
+EXPO_PUBLIC_OPENAI_API_KEY=dein-openai-api-key-hier
+```
+
+**Hinweis**: Die App wählt automatisch Gemini, wenn beide Keys konfiguriert sind.
 
 ## 📁 Projektstruktur
 
@@ -60,10 +85,15 @@ papaai/
 ├── src/
 │   ├── components/       # UI-Komponenten (RecipeCard, Navigation)
 │   ├── screens/          # App-Screens (Home, Planner, Shopping, RecipeDetail)
-│   ├── services/         # OpenAI Service für Rezeptgenerierung
+│   ├── services/         
+│   │   ├── ai/          # AI Provider (Gemini, OpenAI)
+│   │   ├── aiService.ts # Unified AI Service Interface
+│   │   └── openaiService.ts # Legacy OpenAI Service (deprecated)
 │   ├── store/            # Zustand Store für State Management
-│   └── types/            # TypeScript Type Definitions
+│   ├── types/            # TypeScript Type Definitions
+│   └── utils/            # Utility Functions (Image Processing, etc.)
 ├── assets/               # App Icons und Splash Screens
+├── docs/                 # Architecture Documentation
 ├── App.tsx               # Root Component
 ├── app.json              # Expo Konfiguration
 └── tailwind.config.js    # NativeWind/Tailwind Konfiguration
@@ -76,8 +106,9 @@ papaai/
 - **Styling**: NativeWind (Tailwind CSS für React Native)
 - **State Management**: Zustand
 - **Storage**: AsyncStorage
-- **AI**: OpenAI API (GPT-4o)
+- **AI**: Google Gemini 1.5 (Flash & Pro) / OpenAI GPT-4o (Fallback)
 - **Camera**: expo-camera, expo-image-picker
+- **File System**: expo-file-system
 
 ## 📱 Features im Detail
 
@@ -99,7 +130,12 @@ Die KI generiert für jedes Rezept drei Versionen:
 
 ## 🔮 Roadmap
 
-- [ ] Echte OCR-Integration für Speisekarten-Fotos
+- [x] Adapter Pattern für AI Services
+- [x] Google Gemini Integration
+- [x] Multimodale Bild-Verarbeitung (Vision API)
+- [x] Kamera und Galerie Integration
+- [ ] Video-Analyse (Cooking Reels/TikToks)
+- [ ] Google File API Integration für Video-Upload
 - [ ] Social Media Parser (TikTok/Instagram)
 - [ ] Offline-Modus
 - [ ] Drag-and-Drop im Planner

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppStore } from '../store/appStore';
-import { generateRecipe } from '../services/openaiService';
+import { generateRecipe, generateRecipeFromImage, generateRecipeFromVideo } from '../services/aiService';
+import { prepareImageForAI } from '../utils/imageUtils';
 
 export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void }> = ({ onNavigate }) => {
     const [searchInput, setSearchInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('Generiere Rezept...');
     const { recipes, addRecipe } = useAppStore();
 
     const handleGenerate = async (input: string, sourceType: 'text' | 'pantry' | 'ocr' | 'social') => {
@@ -36,11 +38,99 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
             quality: 0.8,
         });
 
-        if (!result.canceled) {
-            Alert.prompt('Gericht erkannt', 'Welches Gericht wurde erkannt?', [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Generieren', onPress: (text?: string) => text && handleGenerate(text, 'ocr') }
-            ]);
+        if (!result.canceled && result.assets[0]) {
+            await handleImageRecipe(result.assets[0].uri, 'Erkenne Gericht aus Foto...');
+        }
+    };
+
+    const handleImagePicker = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert('Berechtigung erforderlich', 'Galerie-Zugriff wird benötigt');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            await handleImageRecipe(result.assets[0].uri, 'Analysiere Speisekarte...');
+        }
+    };
+
+    const handleImageRecipe = async (imageUri: string, message: string) => {
+        setLoading(true);
+        setLoadingMessage(message);
+        
+        try {
+            // Prepare image (resize and convert to base64)
+            setLoadingMessage('Bereite Bild vor...');
+            const imageBase64 = await prepareImageForAI(imageUri);
+            
+            // Generate recipe from image
+            setLoadingMessage('Generiere Rezept...');
+            const recipe = await generateRecipeFromImage(
+                imageBase64,
+                'Analyze this image and create a recipe based on what you see.',
+                'ocr'
+            );
+            
+            addRecipe(recipe);
+            onNavigate('recipe-detail', { recipe });
+        } catch (error) {
+            console.error('Image recipe error:', error);
+            Alert.alert('Fehler', 'Rezept konnte nicht aus dem Bild generiert werden');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVideoPicker = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert('Berechtigung erforderlich', 'Galerie-Zugriff wird benötigt');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['videos'],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            await handleVideoRecipe(result.assets[0].uri);
+        }
+    };
+
+    const handleVideoRecipe = async (videoUri: string) => {
+        setLoading(true);
+        
+        try {
+            // Upload video
+            setLoadingMessage('Lade Video hoch...');
+            
+            // Wait for processing
+            setLoadingMessage('Video wird verarbeitet...');
+            
+            // Generate recipe
+            setLoadingMessage('Analysiere Kochvideo...');
+            const recipe = await generateRecipeFromVideo(
+                videoUri,
+                'Analyze this cooking video and extract the recipe steps, ingredients, and techniques shown.',
+                'social'
+            );
+            
+            setLoadingMessage('Erstelle Rezept...');
+            addRecipe(recipe);
+            onNavigate('recipe-detail', { recipe });
+        } catch (error) {
+            console.error('Video recipe error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+            Alert.alert('Fehler', `Video konnte nicht verarbeitet werden: ${errorMessage}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -74,39 +164,53 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
                 <Text className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
                     Schnell-Import
                 </Text>
-                <View className="flex-row gap-3 mb-6">
-                    <TouchableOpacity
-                        onPress={handleCamera}
-                        className="flex-1 bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-2xl items-center"
-                    >
-                        <Text className="text-3xl mb-2">📸</Text>
-                        <Text className="text-white text-xs font-medium">Karte scannen</Text>
-                    </TouchableOpacity>
+                <View className="gap-3 mb-6">
+                    {/* First Row */}
+                    <View className="flex-row gap-3">
+                        <TouchableOpacity
+                            onPress={handleCamera}
+                            disabled={loading}
+                            className="flex-1 bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-2xl items-center"
+                        >
+                            <Text className="text-3xl mb-2">📸</Text>
+                            <Text className="text-white text-xs font-medium">Kamera</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={() => {
-                            Alert.prompt('Vorrat', 'Zutaten eingeben (mit Komma getrennt):', [
-                                { text: 'Abbrechen', style: 'cancel' },
-                                { text: 'Generieren', onPress: (text?: string) => text && handleGenerate(text, 'pantry') }
-                            ]);
-                        }}
-                        className="flex-1 bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 rounded-2xl items-center"
-                    >
-                        <Text className="text-3xl mb-2">🥘</Text>
-                        <Text className="text-white text-xs font-medium">Vorrat</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleImagePicker}
+                            disabled={loading}
+                            className="flex-1 bg-gradient-to-br from-purple-600 to-purple-700 p-4 rounded-2xl items-center"
+                        >
+                            <Text className="text-3xl mb-2">🖼️</Text>
+                            <Text className="text-white text-xs font-medium">Speisekarte</Text>
+                        </TouchableOpacity>
 
+                        <TouchableOpacity
+                            onPress={() => {
+                                Alert.prompt('Vorrat', 'Zutaten eingeben (mit Komma getrennt):', [
+                                    { text: 'Abbrechen', style: 'cancel' },
+                                    { text: 'Generieren', onPress: (text?: string) => text && handleGenerate(text, 'pantry') }
+                                ]);
+                            }}
+                            disabled={loading}
+                            className="flex-1 bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 rounded-2xl items-center"
+                        >
+                            <Text className="text-3xl mb-2">🥘</Text>
+                            <Text className="text-white text-xs font-medium">Vorrat</Text>
+                        </TouchableOpacity>
+                    </View>
+                    
+                    {/* Second Row - Video */}
                     <TouchableOpacity
-                        onPress={() => {
-                            Alert.prompt('Social Link', 'Rezept-URL einfügen:', [
-                                { text: 'Abbrechen', style: 'cancel' },
-                                { text: 'Importieren', onPress: (text: string | undefined) => text && handleGenerate(`Rezept von ${text}`, 'social') }
-                            ]);
-                        }}
-                        className="flex-1 bg-gradient-to-br from-pink-500 to-rose-600 p-4 rounded-2xl items-center"
+                        onPress={handleVideoPicker}
+                        disabled={loading}
+                        className="bg-gradient-to-br from-pink-500 to-rose-600 p-4 rounded-2xl items-center flex-row justify-center gap-3"
                     >
-                        <Text className="text-3xl mb-2">🔗</Text>
-                        <Text className="text-white text-xs font-medium">Social Link</Text>
+                        <Text className="text-3xl">🎬</Text>
+                        <View>
+                            <Text className="text-white font-bold">Kochvideo analysieren</Text>
+                            <Text className="text-white text-xs opacity-80">Reels, TikToks & mehr</Text>
+                        </View>
                     </TouchableOpacity>
                 </View>
 
@@ -146,8 +250,10 @@ export const HomeScreen: React.FC<{ onNavigate: (view: any, data?: any) => void 
                 )}
 
                 {loading && (
-                    <View className="mt-6 items-center">
-                        <Text className="text-gray-500">Generiere Rezept... ⏳</Text>
+                    <View className="mt-6 items-center bg-white p-6 rounded-2xl border border-gray-200">
+                        <ActivityIndicator size="large" color="#FF6B35" />
+                        <Text className="text-gray-700 mt-4 font-medium">{loadingMessage}</Text>
+                        <Text className="text-gray-500 text-sm mt-2">Dies kann einen Moment dauern...</Text>
                     </View>
                 )}
             </View>
